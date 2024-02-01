@@ -9,8 +9,7 @@
 
 
 /* user include */
-#include <PCA9685_LED_DRIVER.h>
-
+#include "led.h"
 
 /*****************************************************************************************/
 /*                                    GENERAL DEFINE                                     */
@@ -29,18 +28,27 @@
 #define MQTT_PAYLOAD_MAX 250
 
 /* Receive topics */
-#define TOPIC_GET_GARDEN_LED_MESSAGE   "garden_led/get/led"
-#define TOPIC_GET_GARDEN_CURRENT       "garden_current/get/current"
+#define TOPIC_WGARDEN_LIGHT01_PERCENT   "wgarden/lights/1/set/brightness"
+#define TOPIC_WGARDEN_LIGHT02_PERCENT   "wgarden/lights/2/set/brightness"
+#define TOPIC_WGARDEN_LIGHT03_PERCENT   "wgarden/lights/3/set/brightness"
+#define TOPIC_WGARDEN_LIGHT04_PERCENT   "wgarden/lights/4/set/brightness"
+#define TOPIC_WGARDEN_LIGHT05_PERCENT   "wgarden/lights/5/set/brightness"
+#define TOPIC_WGARDEN_LIGHT06_PERCENT   "wgarden/lights/6/set/brightness"
+#define TOPIC_WGARDEN_LIGHT07_PERCENT   "wgarden/lights/7/set/brightness"
+#define TOPIC_WGARDEN_LIGHT08_PERCENT   "wgarden/lights/8/set/brightness"
+#define TOPIC_WGARDEN_LIGHT09_PERCENT   "wgarden/lights/9/set/brightness"
+#define TOPIC_WGARDEN_LIGHT10_PERCENT   "wgarden/lights/10/set/brightness"
+#define TOPIC_WGARDEN_LIGHT11_PERCENT   "wgarden/lights/11/set/brightness"
+#define TOPIC_WGARDEN_LIGHT12_PERCENT   "wgarden/lights/12/set/brightness"
+#define TOPIC_WGARDEN_LIGHT13_PERCENT   "wgarden/lights/13/set/brightness"
+#define TOPIC_WGARDEN_LIGHT14_PERCENT   "wgarden/lights/14/set/brightness"
+#define TOPIC_WGARDEN_LIGHT15_PERCENT   "wgarden/lights/15/set/brightness"
+#define TOPIC_WGARDEN_LIGHT16_PERCENT   "wgarden/lights/16/set/brightness"
+#define TOPIC_WGARDEN_LIGHT17_PERCENT   "wgarden/lights/17/set/brightness"
+#define TOPIC_WGARDEN_LIGHT18_PERCENT   "wgarden/lights/18/set/brightness"
 
-/* Send topics */
-#define TOPIC_SET_GARDEN_LED            "garden_led/set/led"
-
-#define CURRENT_PIN 17     // Digital pin connected to the current sensor 
-
-#define PWM_PCA9685_MOD1_ADDRESS     0x40
-#define PWM_PCA9685_MOD2_ADDRESS     0x41
-
-#define FREQUENCY   1000     //min 24Hz, max 1524Hz
+/* send topics*/
+#define TOPIC_WGARDEN_GET_INFO_LIGHTS   "wgarden/lights/all/get/"
 
 
 
@@ -52,20 +60,6 @@
 /*****************************************************************************************/
 /*                                   TYPEDEF STRUCT                                      */
 /*****************************************************************************************/
-typedef struct LED_STRUCT
-{
-  uint brighness;
-  uint state;
-}T_LED_STRUCT;
-
-typedef struct GARDEN_LED
-{
-  char name[12];
-  char version[4];
-  T_LED_STRUCT garden_Led[18];
-}T_GARDEN_LED;
-
-
 
 
 /*****************************************************************************************/
@@ -98,20 +92,6 @@ static void mqttconnect(void);
 /*****************************************************************************************/
 
 
-/* Class Constructor */
-PCA9685 PWMPCA9685_Module1 = (PWM_PCA9685_MOD1_ADDRESS);
-PCA9685 PWMPCA9685_Module2 = (PWM_PCA9685_MOD2_ADDRESS);
-
-T_GARDEN_LED garden_led;
-
-uint8_t version[4] = {'0','.','1','\n'};
-uint8_t name[12] = {'g','a','r','d','e','n','_','L','E','D','s','\n'};
-
-
-
-/* Variables */ 
-uint16_t garden_pwmValModule1[16];
-uint16_t garden_pwmValModule2[16];
 
 /*****************************************************************************************/
 /*                                     end VARIABLES  user                               */
@@ -178,7 +158,7 @@ void setup()
 
   Serial.println(" ");
   Serial.println("########################################################");
-  Serial.println("# Program esp32-home-garden-light-control-mqtt %s      #, version");
+  Serial.println("# Program esp32-home-garden-light-control-mqtt 0.4     #");
   Serial.println("########################################################");
   Serial.println(__FILE__);
   Serial.println(" ");
@@ -222,22 +202,8 @@ void setup()
   /******************/
   /* user init here */
   /******************/
+  Led_Init();
 
-  /* Initialize the pwm servo devices. */
-  PWMPCA9685_Module1.begin(FREQUENCY);
-  PWMPCA9685_Module2.begin(FREQUENCY);
-
-  Serial.println(F("Init of PWM 12 Bit modules..."));
-
-  memset(&garden_pwmValModule1,0x00,16);
-  memset(&garden_pwmValModule2,0x00,16);
-
-  memcpy(&version, &garden_led.version,4);
-  memcpy(&name, &garden_led.name,12);
-
-
-
- 
   Serial.println("Setup finished ... ");
 }
 
@@ -260,8 +226,10 @@ void loop()
   /* this function will listen for incomming
   subscribed topic-process-invoke receivedCallback */
   client.loop();
- 
 
+  /* Update PWM LED Driver */
+  Led_UpdateDriver();
+ 
   /* we increase counter every 5 secs we count until 5 secs reached to avoid blocking program if using delay()*/
   long now = millis();
   
@@ -280,54 +248,42 @@ void loop()
     {
       /* call every 4 sec. */
       //Serial.println("1st call every 4 sec.");
-
-
      
-      
       /********************************************************************************************/
-      /************************      HANDLING OF Send MQTT TOPICS for garden led ******************/ 
+      /************************      HANDLING OF Send MQTT TOPICS for led        ******************/ 
       /********************************************************************************************/
-      /*200 Byte of RAM used for json Object */
+      /*250 Byte of RAM used for json Object */
       StaticJsonDocument<MQTT_PAYLOAD_MAX> doc;
       char Buffer[MQTT_PAYLOAD_MAX];
         
 
        /* Add values in the document */
-       doc["name"] = garden_led.name;
-       doc["version"] = garden_led.version;
-
+       doc["light1"] = Led_GetValue(LED_0);
+       doc["light2"] = Led_GetValue(LED_1);
+       doc["light3"] = Led_GetValue(LED_2);
+       doc["light4"] = Led_GetValue(LED_3);
+       doc["light5"] = Led_GetValue(LED_4);
+       doc["light6"] = Led_GetValue(LED_5);
+       doc["light7"] = Led_GetValue(LED_6);
+       doc["light8"] = Led_GetValue(LED_7);
+       doc["light9"] = Led_GetValue(LED_8);
+       doc["light10"] = Led_GetValue(LED_9);
+       doc["light11"] = Led_GetValue(LED_10);
+       doc["light12"] = Led_GetValue(LED_11);
+       doc["light13"] = Led_GetValue(LED_12);
+       doc["light14"] = Led_GetValue(LED_13);
+       doc["light15"] = Led_GetValue(LED_14);
+       doc["light16"] = Led_GetValue(LED_15);
+       doc["light17"] = Led_GetValue(LED_16);
+       doc["light18"] = Led_GetValue(LED_17);
        /* serialize the content */
        serializeJson(doc, Buffer);
        /* publish the buffer content */
-       client.publish(TOPIC_GET_GARDEN_LED_MESSAGE, Buffer, false);
+       client.publish(TOPIC_WGARDEN_GET_INFO_LIGHTS, Buffer, false);
      }
-     else
-     {
-       /* call every 4 sec. */
-       //Serial.println("2nd call every 4 sec.");
-    
-
-
-
-      /********************************************************************************************/
-      /************************      HANDLING OF Send MQTT TOPICS for INA 219  ********************/ 
-      /********************************************************************************************/
-      /*200 Byte of RAM used for json Object */
-      StaticJsonDocument<MQTT_PAYLOAD_MAX> doc;
-      char Buffer[MQTT_PAYLOAD_MAX];
-        
-      doc["current_mA"] = 0;
-      
-      
-      /* serialize the content */
-      serializeJson(doc, Buffer);
-      /* publish the buffer content */
-      client.publish(TOPIC_GET_GARDEN_CURRENT, Buffer, false);
-    }
   }
- 
-  
-    
+
+
   /* store counter value */
   loop_2sec_counterOld = loop_2sec_counter;
 }
@@ -341,7 +297,7 @@ return: void
 **************************************************************************************************/
 void receivedCallback(char* topic, byte* payload, unsigned int length) 
 {
-  uint8_t Loc_state;
+  uint8_t Loc_Brightness;
 
  
   StaticJsonDocument<MQTT_PAYLOAD_MAX> doc;
@@ -368,37 +324,190 @@ void receivedCallback(char* topic, byte* payload, unsigned int length)
     return;
   }
 
-  long time = doc["time"];
-  Serial.println(time);
-
-
   /********************************************************************************************/
   /********************      HANDLING OF Received MQTT TOPICS WITH JASON     ******************/ 
   /********************************************************************************************/
   
   /*+++++++++++++++++++++++++++++ Set control +++++++++++++++++++++++++++++++++++++++*/ 
  
-  if(strcmp(topic, TOPIC_SET_GARDEN_LED)==0)
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT01_PERCENT)==0)
   {
-    if(doc.containsKey("state")) 
+    if(doc.containsKey("value")) 
     {
-      Loc_state = doc["state"];
-      Serial.print("state garden LED received set: ");
-      Serial.println(Loc_state, DEC);
-
-      
-      for(int i=0;i<16;i++)
-      {
-        PWMPCA9685_Module1.setPWM(i, i*i*16);   //Set PWM for output 0 to 1000_ON to 3095_OFF. 4095/10Bit.
-        //gpio.setPWM(pwmValues, sizeof(pwmValues));    //Use an uint16_t array for updating multiple PWM values with one function
-        PWMPCA9685_Module1.update();  //Send the PWM value from the RAM to the PCA9685 over I2C.
-
-        PWMPCA9685_Module2.setPWM(i, i*i*16);   //Set PWM for output 0 to 1000_ON to 3095_OFF. 4095/10Bit.
-        //gpio.setPWM(pwmValues, sizeof(pwmValues));    //Use an uint16_t array for updating multiple PWM values with one function
-        PWMPCA9685_Module2.update();  //Send the PWM value from the RAM to the PCA9685 over I2C.
-      }
-
-           
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 1 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_0, Loc_Brightness); 
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT02_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 2 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_1, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT03_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 3 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_2, Loc_Brightness);   
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT04_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 4 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_3, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT05_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 5 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_4, Loc_Brightness);     
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT06_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 6 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_5, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT07_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 7 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_6, Loc_Brightness);     
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT08_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 8 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_7, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT09_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 9 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_8, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT10_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 10 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_9, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT11_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 11 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_10, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT12_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 12 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_11, Loc_Brightness);   
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT13_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 13 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_12, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT14_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 14 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_13, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT15_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 15 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_14, Loc_Brightness);   
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT16_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 16 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_15, Loc_Brightness);   
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT17_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 17 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_16, Loc_Brightness);    
+    }
+  }
+  if(strcmp(topic, TOPIC_WGARDEN_LIGHT18_PERCENT)==0)
+  {
+    if(doc.containsKey("value")) 
+    {
+      Loc_Brightness = doc["value"];
+      Serial.print("Light 18 brightness Set:");
+      Serial.println(Loc_Brightness, DEC);
+      Led_SetValue(LED_17, Loc_Brightness);   
     }
   }
 }
@@ -425,7 +534,24 @@ void mqttconnect(void)
       /*********************/
       /* subscribe topic's */
       /*********************/
-      client.subscribe(TOPIC_SET_GARDEN_LED);
+      client.subscribe(TOPIC_WGARDEN_LIGHT01_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT02_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT03_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT04_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT05_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT06_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT07_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT08_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT09_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT10_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT11_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT12_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT13_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT14_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT15_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT16_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT17_PERCENT);
+      client.subscribe(TOPIC_WGARDEN_LIGHT18_PERCENT);
     
     } 
     else 
