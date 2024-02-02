@@ -10,6 +10,7 @@
 
 /* user include */
 #include "led.h"
+#include "current.h"
 
 /*****************************************************************************************/
 /*                                    GENERAL DEFINE                                     */
@@ -158,7 +159,7 @@ void setup()
 
   Serial.println(" ");
   Serial.println("########################################################");
-  Serial.println("# Program esp32-home-garden-light-control-mqtt 0.4     #");
+  Serial.println("# Program esp32-home-garden-light-control-mqtt 0.5     #");
   Serial.println("########################################################");
   Serial.println(__FILE__);
   Serial.println(" ");
@@ -203,6 +204,7 @@ void setup()
   /* user init here */
   /******************/
   Led_Init();
+  current_init();
 
   Serial.println("Setup finished ... ");
 }
@@ -229,6 +231,7 @@ void loop()
 
   /* Update PWM LED Driver */
   Led_UpdateDriver();
+  
  
   /* we increase counter every 5 secs we count until 5 secs reached to avoid blocking program if using delay()*/
   long now = millis();
@@ -244,7 +247,7 @@ void loop()
 
   if(loop_2sec_counter != loop_2sec_counterOld)
   {
-    if(loop_2sec_counter % 2 == 0)
+        if(loop_2sec_counter % 2 == 0)
     {
       /* call every 4 sec. */
       //Serial.println("1st call every 4 sec.");
@@ -256,7 +259,6 @@ void loop()
       StaticJsonDocument<MQTT_PAYLOAD_MAX> doc;
       char Buffer[MQTT_PAYLOAD_MAX];
         
-
        /* Add values in the document */
        doc["light1"] = Led_GetValue(LED_0);
        doc["light2"] = Led_GetValue(LED_1);
@@ -276,6 +278,7 @@ void loop()
        doc["light16"] = Led_GetValue(LED_15);
        doc["light17"] = Led_GetValue(LED_16);
        doc["light18"] = Led_GetValue(LED_17);
+       doc["mA"] = current_get_ma();
        /* serialize the content */
        serializeJson(doc, Buffer);
        /* publish the buffer content */
